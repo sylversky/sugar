@@ -1,5 +1,5 @@
 # Sugar ORM
-<b>(Sugar ORM for simple one to many relationship and encrypted database)</b>
+##### (Sugar ORM for automatic one to many relationship and encrypted database)
 
 
 Insanely easy way to work with Android databases. This is <b>custom version</b> based from master version of Sugar ORM.
