@@ -1,0 +1,103 @@
+package com.orm;
+
+import net.sqlcipher.database.SQLiteDatabase;
+import net.sqlcipher.database.SQLiteOpenHelper;
+import android.util.Log;
+
+import com.orm.dsl.BuildConfig;
+import com.orm.helper.ManifestHelper;
+import com.orm.util.SugarCursorFactory;
+
+import java.util.Locale;
+
+import static com.orm.util.ContextUtil.getContext;
+import static com.orm.helper.ManifestHelper.getDatabaseVersion;
+import static com.orm.helper.ManifestHelper.getDbName;
+import static com.orm.SugarContext.getDbConfiguration;
+
+public class SugarDb extends SQLiteOpenHelper {
+    private static final String LOG_TAG = "Sugar";
+
+    private final SchemaGenerator schemaGenerator;
+    private SQLiteDatabase sqLiteDatabase;
+    private int openedConnections = 0;
+    private String encrypted = new String();
+
+    //Prevent instantiation
+    private SugarDb() {
+        super(getContext(), getDbName(), new SugarCursorFactory(ManifestHelper.isDebugEnabled()), getDatabaseVersion());
+        schemaGenerator = SchemaGenerator.getInstance();
+        SQLiteDatabase.loadLibs(getContext());
+        SugarDbConfiguration configuration = getDbConfiguration();
+        if(configuration!=null){
+            encrypted = configuration.getEncryptedPassword();
+        }
+    }
+
+    public static SugarDb getInstance() {
+        return new SugarDb();
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        schemaGenerator.createDatabase(sqLiteDatabase);
+    }
+
+    private void configure() {
+        final SugarDbConfiguration configuration = getDbConfiguration();
+
+        if (null != configuration) {
+            Locale dbLocale = configuration.getDatabaseLocale();
+            Long maxSize = configuration.getMaxSize();
+            Long pageSize = configuration.getPageSize();
+            if(dbLocale!=null) {
+                sqLiteDatabase.setLocale(dbLocale);
+            }
+
+            if(maxSize!=-1){
+                sqLiteDatabase.setMaximumSize(maxSize);
+            }
+
+
+            if(pageSize!=-1) {
+                sqLiteDatabase.setPageSize(pageSize);
+            }
+        }
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
+        schemaGenerator.doUpgrade(sqLiteDatabase, oldVersion, newVersion);
+    }
+
+    public synchronized SQLiteDatabase getDB() {
+        if (this.sqLiteDatabase == null) {
+            this.sqLiteDatabase = getWritableDatabase(encrypted);
+            configure();
+        }
+
+        return this.sqLiteDatabase;
+    }
+
+    public synchronized SQLiteDatabase getReadableDatabase() {
+        if(ManifestHelper.isDebugEnabled()) {
+            Log.d(LOG_TAG, "getReadableDatabase");
+        }
+        openedConnections++;
+        return super.getReadableDatabase(encrypted);
+    }
+
+    @Override
+    public synchronized void close() {
+        if(ManifestHelper.isDebugEnabled()) {
+            Log.d(LOG_TAG, "getReadableDatabase");
+        }
+        openedConnections--;
+        if(openedConnections == 0) {
+            if(ManifestHelper.isDebugEnabled()) {
+                Log.d(LOG_TAG, "closing");
+            }
+            super.close();
+        }
+    }
+}

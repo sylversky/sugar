@@ -1,188 +1,344 @@
-# Sugar ORM [![Build Status](https://travis-ci.org/satyan/sugar.svg?branch=master)](https://travis-ci.org/satyan/sugar) [![Coverage Status](https://coveralls.io/repos/satyan/sugar/badge.svg?branch=master)](https://coveralls.io/r/satyan/sugar?branch=master) [![Code Triagers Badge](http://www.codetriage.com/satyan/sugar/badges/users.svg)](http://www.codetriage.com/satyan/sugar)
+# Sugar ORM
+#####(Sugar ORM for simple one to many relationship and encrypted database)
 
-[![Join the chat at https://gitter.im/satyan/sugar](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/satyan/sugar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Insanely easy way to work with Android databases.
-
-Official documentation can be found [here](http://satyan.github.io/sugar) - Check some examples below. The example application is provided in the **example** folder in the source.
-
-## Looking for contributors
-We need contributors to help maintain this project, ask @satyan for repo permission
-
-Otherwise you can use another ORM, like https://github.com/requery/requery or https://realm.io/
-
-## Features
-
+Insanely easy way to work with Android databases. This is <b>custom version</b> based from master version of Sugar ORM.
 Sugar ORM was built in contrast to other ORM's to have:
 
 - A simple, concise, and clean integration process with minimal configuration.
 - Automatic table and column naming through reflection.
 - Support for migrations between different schema versions.
 
-## Installing
+Official documentation can be found [here](http://satyan.github.io/sugar) - Check some examples below. The example application is provided in the **example** folder in the source.
 
-There are four ways to install Sugar:
+## What is supported in this version
+- Use <b>SugarRecord.insertOrUpdate( )</b> to insert or update the data
+- Added <b>@IgnoreUpdate</b> annotation
+- Automatic one to many insert and query
+- Find All with return List
+- Drop table
+- Encrypted database
 
-#### As a Gradle dependency
+See below for more example and explaination ...
 
-This is the preferred way. Simply add:
 
-```groovy
-compile 'com.github.satyan:sugar:1.5'
+## Install
+Add bintray repository on your project build.gradle
 ```
-
-to your project dependencies and run `gradle build` or `gradle assemble`.
-
-#### As a Maven dependency
-
-Declare the dependency in Maven:
-
-```xml
-<dependency>
-    <groupId>com.github.satyan</groupId>
-    <artifactId>sugar</artifactId>
-    <version>1.5</version>
-</dependency>
-```
-
-#### As a library project
-
-Download the source code and import it as a library project in Eclipse. The project is available in the folder **library**. For more information on how to do this, read [here](http://developer.android.com/tools/projects/index.html#LibraryProjects).
-
-#### As a jar
-
-Visit the [releases](https://github.com/satyan/sugar/releases) page to download jars directly. You can drop them into your `libs` folder and configure the Java build path to include the library. See this [tutorial](http://www.vogella.com/tutorials/AndroidLibraryProjects/article.html) for an excellent guide on how to do this.
-
-
-### How to use master version
-First, download sugar repository
-```
-git clone git@github.com:satyan/sugar.git
-```
-
-include this in your **settings.gradle**
-```gradle
-include ':app' // your module app
-include ':sugar'
-
-def getLocalProperty(prop) {
-	Properties properties = new Properties()
-	properties.load(new File(rootDir.absolutePath + '/local.properties').newDataInputStream())
-	return properties.getProperty(prop, '')
+allprojects {
+    repositories {
+        ...
+        maven {
+            url 'https://dl.bintray.com/sylversky/AndroidLibrary/'
+        }
+    }
 }
-
-project(':sugar').projectDir = new File(getLocalProperty('sugar.dir'))
-
 ```
 
-include this in your **local.properties**
-```
-sugar.dir=/path/to/sugar/library
-```
 
-add sugar project to the dependencies of your main project (build.gradle)
-```gradle
+Add on your app build.gradle
+```
 dependencies {
-    compile project(':sugar')
+    compile 'com.sylversky.library:sugarorm:1.0.0'
 }
 ```
 
-You should also comment this line just comment this line (library/build.gradle): https://github.com/satyan/sugar/blob/master/library%2Fbuild.gradle#L2
+## Configuration
 
-```gradle
-// apply from: '../maven_push.gradle'
-```
-===================
-
-After installing, check out how to set up your first database and models [here](http://satyan.github.io/sugar/getting-started.html) **Outdated**. Check examples of 1.4 and master below: 
-
-## Examples
-### SugarRecord
+Extends SugarApp on your application class
 ```java
-public class Book extends SugarRecord {
-  @Unique
-  String isbn;
-  String title;
-  String edition;
+public class ClientApp extends SugarApp {
 
-  // Default constructor is necessary for SugarRecord
-  public Book() {
-
-  }
-
-  public Book(String isbn, String title, String edition) {
-    this.isbn = isbn;
-    this.title = title;
-    this.edition = edition;
-  }
 }
 ```
-or
+or you can manualy init the sugar orm on you application class
+```java
+public class ClientApp extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        SugarContext.init(this);
+    }
+
+    @Override
+    public void onTerminate() {
+        super.onTerminate();
+        SugarContext.terminate();
+    }
+}
+```
+
+Open your AndroidManifest.xml and put some like this inside appication tag:
+```
+<application ...
+android:name=".ClientApp">
+.
+.
+<meta-data android:name="DATABASE" android:value="sugar_example.db" />  //database file name
+<meta-data android:name="VERSION" android:value="1" /> //database version
+<meta-data android:name="QUERY_LOG" android:value="true" /> //database log
+<meta-data android:name="DOMAIN_PACKAGE_NAME" android:value="yourentitypackage" /> //location of package for all of your entity table
+.
+.
+</application>
+```
+
+## How to use
+
+### Create Entity Table
 ```java
 @Table
-public class Book { ... }
+public class Person {
+  Long id;
+  String regId;
+  String name;
+  Date dob;
+  
+  public Person(){}
+  
+  public Person(Long id, String regId, String name, Date dob){
+    this.id = id;
+    this.regId = regId;
+    this.name = name;
+    this.dob = dob;
+  }
+  
+}
 ```
 
-### Save Entity
+This is will create table PERSON with columns ID,REG_ID,NAME,DOB on SQLite.
+*** Field "Long id" is a <b>must</b> to declare. This will be the <b>primary key</b> (autoincrement) for your table.
+*** When you need to create your own constructor, you <b>must</b> add an empty constructor
+
+### Primary Key with another data type
+The default primary key is with Long data type.
+If you need other data type (for example String), just keep the "Long id" for primary key, add new filed and put the <b>@Unique</b> annotation.
 ```java
-Book book = new Book("isbn123", "Title here", "2nd edition")
-book.save();
+@Table
+public class Person {
+  Long id;
+  @Unique
+  String personId;
+  
+  String regId;
+  String name;
+  Date dob;
+  
+  public Person(){}
+  
+  public Person(Long id, String personId, String regId, String name, Date dob){
+    this.id = id;
+    this.personId = personId;
+    this.regId = regId;
+    this.name = name;
+    this.dob = dob;
+  }
+  
+}
 ```
 
-or
+### Insert
 ```java
-SugarRecord.save(book); // if using the @Table annotation 
+Person person = new Person(1l,"abc12345","Leonardo", new Date());
+SugarRecord.insertOrUpdate(person);
 ```
 
-### Load Entity
+### Query
 ```java
-Book book = Book.findById(Book.class, 1);
+Person person = SugarRecord.findById(Person.class, 1);
 ```
 
-### Update Entity
+### Query with condition
 ```java
-Book book = Book.findById(Book.class, 1);
-book.title = "updated title here"; // modify the values
-book.edition = "3rd edition";
-book.save(); // updates the previous entry with new values.
+List<Person> person = SugarRecord.find(Person.class, "NAME = ?", "Leonardo");
+```
+
+### Query All
+```java
+List<Person> person = SugarRecord.findAll(Person.class);
 ```
 
 
-### Delete Entity
+### Update
 ```java
-Book book = Book.findById(Book.class, 1);
-book.delete();
+Person person = SugarRecord.findById(Person.class, 1);
+person.regId = "def12345"
+person.name = "Donatelo"; // modify the values
+SugarRecord.update(person);
 ```
 
-or
+### Delete
 ```java
-SugarRecord.delete(book); // if using the @Table annotation 
-```
-
-### Update Entity based on Unique values
-```java
-Book book = new Book("isbn123", "Title here", "2nd edition")
-book.save();
-
-// Update book with isbn123
-Book sameBook = new Book("isbn123", "New Title", "5th edition")
-sameBook.update();
-
-book.getId() == sameBook.getId(); // true
-```
-
-or
-```java
-SugarRecord.update(sameBook); // if using the @Table annotation 
+Person person = SugarRecord.findById(Person.class, 1);
+SugarRecord.delete(person);
 ```
 
 ### Bulk Insert
 ```java
-List<Book> books = new ArrayList<>();
-books.add(new Book("isbn123", "Title here", "2nd edition"))
-books.add(new Book("isbn456", "Title here 2", "3nd edition"))
-books.add(new Book("isbn789", "Title here 3", "4nd edition"))
-SugarRecord.saveInTx(books);
+List<Person> persons = new ArrayList<>();
+persons.add(new Person(1l,"abc12345","Leonardo", new Date()))
+persons.add(new Person(2l,"def12345","Donatelo", new Date()))
+persons.add(new Person(3l,"ghi12345","Michaelangelo", new Date()))
+SugarRecord.insertOrUpdate(persons);
+```
+
+### Drop table
+```java
+SugarRecord.drop(Person.class);
+```
+*** Becarefull when use drop. This function will remove the structure of table.
+
+
+### Ignore Update
+You can ignoring update for specified column. Only work when use <b>SugarRecord.insertOrUpdate( )</b> function.
+For example : we need to give flag data read/unread, but ignoring to replace when refreshed from api server.
+Don't worry, you still can update specified column with SugarRecord.update( ) function.
+
+#####Create entitiy table with @IgnoreUpdate
+```java
+@Table
+public class Person {
+  Long id;
+  String regId;
+  String name;
+  Date dob;
+  @IgnoreUpdate
+  boolean read;
+  
+  public Person(){}
+  
+  public Person(Long id, String regId, String name, Date dob){
+    this.id = id;
+    this.regId = regId;
+    this.name = name;
+    this.dob = dob;
+  }
+  
+}
+```
+
+
+##### Then do some Insert
+```java
+Person person = new Person(1l,"abc12345","Leonardo", new Date());
+SugarRecord.insertOrUpdate(person);
+```
+
+Now read flag is 'false';
+
+##### Update read flag to 'true'
+```java
+Person person = SugarRecord.findById(Person.class, 1);
+person.read = true;
+SugarRecord.update(person);
+```
+
+Now read flag is 'true';
+
+##### Try to Insert again
+```java
+Person person = new Person(1l,"abc12345","Leonardo", new Date());
+SugarRecord.insertOrUpdate(person);
+```
+This will insert data person with default read value is 'false', but because use @IgnoreUpdate now read flag still 'true'
+
+
+### Automatic One To Many
+When you need other entity be member of your entity, Sugar will automatically manage it.
+
+#####Create entitiy table
+```java
+@Table
+public class Address {
+    Long id;
+    String street;
+    String province;
+    
+    public Address(){}
+    
+    public Address(Long id, String street, String province){
+        this.id = id;
+        this.street = street;
+        this.province = province;
+    }
+}
+```
+
+#####Create entitiy table with other entity member
+```java
+@Table
+public class Person {
+  Long id;
+  String regId;
+  String name;
+  Date dob;
+  List<Address> address;
+  
+  public Person(){}
+  
+  public Person(Long id, String regId, String name, Date dob, List<Address> address){
+    this.id = id;
+    this.regId = regId;
+    this.name = name;
+    this.dob = dob;
+    this.address = address;
+  }
+  
+}
+```
+
+##### Then do some Insert
+```java
+List<Address> addressList = new ArrayList();
+addressList.add(new Address(1l,"my office","my province"));
+addressList.add(new Address(2l,"my home","my countryside province"));
+
+Person person = new Person(1l,"abc12345","Leonardo", new Date(), addressList);
+SugarRecord.insertOrUpdate(person);
+```
+Person and address will automatically insert into different table.
+
+##### Query
+```java
+Person person = SugarRecord.findById(Person.class, 1);
+List<Address> addresList = person.address;
+```
+With execute just one find( ) function, person and address will automatically combined.
+
+### Migration
+1. Just declare your new column inside your entity.
+2. Increase meta VERSION value on AndroidManifest.xml.
+   ```
+   <application ...
+   android:name=".ClientApp">
+   .
+   .
+   <meta-data android:name="VERSION" android:value="2" /> //database version
+   .
+   .
+   </application>
+   ```
+
+Database schema will automatically updated.
+
+### Encrypt Database
+Just add SugarDbConfiguration with your password for encrypt when initialize Sugar
+
+```java
+public class ClientApp extends Application {
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        SugarContext.init(this, new SugarDbConfiguration().setEncryptedPassword("mysugarpassword"));
+    }
+
+    @Override
+    public void onTerminate() {
+        SugarContext.terminate();
+        super.onTerminate();
+    }
+}
 ```
 
 ### When using ProGuard
@@ -201,8 +357,6 @@ You can enable it after the tables have been created.
 To disable Instant-Run in Android Studio: 
 
 ``(Preferences (Mac) or Settings (PC) -> Build, Execution, Deployment -> Instant Run -> Untick "Enable Instant Run..." )``
-
-## [CHANGELOG](https://github.com/satyan/sugar/blob/master/CHANGELOG.md)
 
 ## Contributing
 
