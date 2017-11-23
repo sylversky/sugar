@@ -27,7 +27,7 @@ See below for more example and explaination ...
 Add on your app build.gradle
 ```
 dependencies {
-    compile 'com.sylversky.library:sugarorm:1.0.0'
+    compile 'com.sylversky.library:sugarorm:1.0.1'
 }
 ```
 
